@@ -1,4 +1,4 @@
-HollywoodBuster is a full-stack REST API + automation platform that detects and monitors non-followers and safely mass-unfollows unwanted Instagram accounts using Playwright browser automation with Python and FastAPI.
+HollywoodBuster is a full-stack REST API + automation platform that detects and monitors Instagram Users who don't follow you back and safely mass-unfollows unwanted Instagram accounts using Playwright browser automation with Python and FastAPI.
 
 Public Repo coming soon!
 
