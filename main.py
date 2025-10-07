@@ -136,6 +136,8 @@ async def main():
             )
         following = await following_scraper.run()
 
+        await asyncio.sleep(3000)
+
         print('written folllowing.json to disc')
 
 

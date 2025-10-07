@@ -3,7 +3,7 @@ from typing import Optional
 
 @dataclass(frozen=True)
 class ScrapeConfig:
-    quiet_ms: int = 4_000
+    quiet_ms: int = 8_000
     max_scrolls: int = 25_000
     scroll_delta: int = 1_000
     cooldown_s: float = 0.1
@@ -33,7 +33,7 @@ class Selectors:
     # mutation observer detects these changes
     # if we scroll and the search loading animation does not come up, that means no new followers were loaded.
     # if after scrolling, we detect no mutations to the search input for more than x seconds, we know all followers are loaded.
-    search_area_anchor_css: str = '[aria-label="Search input"], [aria-label="Search"]' 
+    search_area_anchor_css: str = '[aria-label="Search input"]' 
 
     # represents each row containng information about the instagram user
     follower_item_css: str = (

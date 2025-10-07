@@ -81,37 +81,54 @@ class InstagramFollowerScraper:
         sel = self.selectors
         # this will go through each row of followers and grab username, pic, name, and whether they are verified
         return await self.page.evaluate(
-            """
-            ({itemSel, linkSel, nameSel, verifySel}) => Array.from(document.querySelectorAll(itemSel)).map(el => {
-                const a = el.querySelector(linkSel);
-                const nameEl = el.querySelector(nameSel);
-                const isVerified = !!el.querySelector(verifySel);
-                const img =
+    """
+    ({ itemSel, linkSel, nameSel, verifySel }) => {
+        // Grab all elements in DOM order
+        const allEls = Array.from(document.querySelectorAll('*'));
+
+        // Find the index of the first <h4> that contains "Suggested for you"
+        const stopIndex = allEls.findIndex(
+            el => el.tagName.toLowerCase() === 'h4' && el.textContent.includes('Suggested for you')
+        );
+
+        // If not found, take everything
+        const limit = stopIndex !== -1 ? stopIndex : allEls.length;
+
+        // Take only itemSel elements before that point as we do not want suggested followers
+        const beforeSuggested = allEls.slice(0, limit).filter(el => el.matches(itemSel));
+
+        return beforeSuggested.map(el => {
+            const a = el.querySelector(linkSel);
+            const nameEl = el.querySelector(nameSel);
+            const isVerified = !!el.querySelector(verifySel);
+            const img =
                 a?.querySelector?.('img') ??
                 // if the instagram user is verified their profile pic is in a span tag
                 el.querySelector('span[role="link"] img') ??
                 null;
-                
-                let username = null;
-                if (a) {
-                    const href = a.getAttribute('href') || "";
-                    // Typically '/username/' -> 'username'
-                    username = href.replace(/^\\/+|\\/+$/g, '');
-                }
 
-                return {
-                    username,
-                    name: nameEl ? nameEl.textContent.trim() : null,
-                    profilePic: img ? img.src : null,
-                    verified: isVerified
-                };
-            })
-            """,
-            {
-                "itemSel": sel.follower_item_css,
-                "linkSel": sel.follower_link_css,
-                "nameSel": sel.follower_name_css,
-                "verifySel": sel.verified_bage_css
-            },
-        )
+            let username = null;
+            if (a) {
+                const href = a.getAttribute('href') || "";
+                // trim the forward slash at the begging and end
+                username = href.replace(/^\\/+|\\/+$/g, '');
+            }
+
+            return {
+                username,
+                name: nameEl ? nameEl.textContent.trim() : null,
+                profilePic: img ? img.src : null,
+                verified: isVerified
+            };
+        });
+    }
+    """,
+    {
+        "itemSel": sel.follower_item_css,
+        "linkSel": sel.follower_link_css,
+        "nameSel": sel.follower_name_css,
+        "verifySel": sel.verified_bage_css,
+    },
+)
+
 
