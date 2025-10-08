@@ -31,3 +31,6 @@ cookies/*
 # --- Project-specific ---
 followers.json
 following.json
+
+they_dont_follow_back.json
+you_dont_follow_back.json
