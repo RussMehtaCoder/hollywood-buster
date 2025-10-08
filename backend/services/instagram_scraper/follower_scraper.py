@@ -42,7 +42,7 @@ class InstagramFollowerScraper:
                     if await self.loading.poll_once(self.page) is not True:
                         break
                     await self.loading.wait_small()
-
+            
             if await self.dom_observer.is_stable(self.page):
                 self.log.info(f"DOM stabilized after {i+1} scrolls")
                 break

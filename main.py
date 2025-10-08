@@ -7,7 +7,7 @@ Requirements:
   playwright install chromium
 
 Make sure Chrome/Chromium is started with:
-  chrome --remote-debugging-port=9222
+.\\chrome.exe --remote-debugging-port=9222 --user-data-dir=%CD%\tmp-profile
 """
 import json
 import asyncio
@@ -17,9 +17,7 @@ from backend.services.instagram_scraper.config import ScrapeConfig
 from backend.services.instagram_scraper.utils_logger import make_logger
 
 from backend.services.instagram_scraper.follower_scraper import InstagramFollowerScraper
-    
-STATE_PATH = "./instagram.storage.json"
-COOKIES_PATH = "./instagram.cookies.json"
+from backend.services.instagram_scraper.follower_scraper_live import LiveInstagramFollowerScraper
 
 
 def get_ws_url() -> str:
@@ -43,7 +41,7 @@ def find_user_cookies(username: str):
         print(f"No cookie files found for username: {username}")
         return None
     latest = max(matches, key=lambda p: p.stat().st_mtime)
-    print(f"✅ Found cookie file: {latest}")
+    print(f"Found cookie file: {latest}")
     return latest
 
 async def main():
@@ -67,6 +65,8 @@ async def main():
 
         username = input('type in your instagram username.')
 
+        mode = input('live scrape mode? y/n')
+
         # find the file with username prefixed file ending with suffix cookies in cookies folder of cwd
         cookie_file = find_user_cookies(username)
 
@@ -88,25 +88,30 @@ async def main():
         print(f"[info] Opened {page.url}")
         print(f"[info] Title: {await page.title()}")
         await asyncio.sleep(2)
-        logger = make_logger(
-            name="ig_followers",
+        follower_logger = make_logger(
+            name="follower_scraper",
             to_console=True,
-            level="DEBUG",
+            level="INFO",
         )
 
-        scraper = InstagramFollowerScraper(
-        page,
-        config=ScrapeConfig(
-        quiet_ms=5_000,
-        scroll_delta=1_000,
-        cooldown_s=0.1,
-        log_to_console=True,      
-        log_level="INFO",        
-        write_file="followers.json",
-            ),
-    logger=logger,
-            )
-        await scraper.run()
+        # Define shared config once
+        config = ScrapeConfig(
+            quiet_ms=5_000,
+            scroll_delta=1_000,
+            cooldown_s=0.1,
+            log_to_console=True,
+            log_level="INFO",
+            write_file="followers.json",
+        )
+
+        # Choose scraper class based on mode
+        ScraperClass = LiveInstagramFollowerScraper if mode == "y" else InstagramFollowerScraper
+
+        # Instantiate scraper
+        scraper = ScraperClass(page, config=config, logger=follower_logger)
+
+        
+        followers = await scraper.run()
 
         print('wrote followers.json to disk')
 
@@ -120,24 +125,58 @@ async def main():
 
         await page.click('[href*="following"]')
 
+        following_logger = make_logger(
+            name="follower_scraper",
+            to_console=True,
+            level="INFO",
+        )
 
+        ScraperClass = LiveInstagramFollowerScraper if mode.lower() == "y" else InstagramFollowerScraper
 
-        following_scraper = InstagramFollowerScraper(
-        page,
-        config=ScrapeConfig(
-        quiet_ms=5_000,
-        scroll_delta=1_000,
-        cooldown_s=0.1,
-        log_to_console=True,      
-        log_level="INFO",        
-        write_file="following.json",
-            ),
-    logger=logger,
-            )
+        # Shared configuration
+        config = ScrapeConfig(
+            quiet_ms=5_000,
+            scroll_delta=1_000,
+            cooldown_s=0.1,
+            log_to_console=True,
+            log_level="INFO",
+            write_file="following.json",
+        )
+
+        # Instantiate and run scraper
+        following_scraper = ScraperClass(
+            page,
+            config=config,
+            logger=following_logger,
+        )
+
         following = await following_scraper.run()
 
-        await asyncio.sleep(3000)
+        # set of usernames in followers and following list
+        followers_username = {item["username"] for item in followers}
+        following_username = {item["username"] for item in following}
 
+        they_dont_follow_back = [user for user in following if user["username"] not in followers_username]
+        you_dont_follow_back = [user for user in followers if user["username"] not in following_username]
+
+        print(f"they don't follow you back " , len(they_dont_follow_back))
+        print(f"you do not follow them back " , len(you_dont_follow_back))
+
+        try:
+            with open('./they_dont_follow_back.json', "w", encoding="utf-8") as f:
+                json.dump(they_dont_follow_back, f, indent=4, ensure_ascii=False)
+                print(f"Wrote {len(they_dont_follow_back)} records to you_dont_follow_back.json")
+        except Exception as e:
+            print(f" write failed: {e}")
+
+        try:
+            with open('./you_dont_follow_back.json', "w", encoding="utf-8") as f:
+                json.dump(you_dont_follow_back, f, indent=4, ensure_ascii=False)
+                print(f"Wrote {len(you_dont_follow_back)} records to you_dont_follow_back.json")
+        except Exception as e:
+            print(f" write failed: {e}")
+
+    
         print('written folllowing.json to disc')
 
 
