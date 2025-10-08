@@ -18,7 +18,7 @@ from backend.services.instagram_scraper.utils_logger import make_logger
 
 from backend.services.instagram_scraper.follower_scraper import InstagramFollowerScraper
 from backend.services.instagram_scraper.follower_scraper_live import LiveInstagramFollowerScraper
-
+from backend.services.instagram_scraper.follower_analyzer import FollowerAnalyzer
 
 def get_ws_url() -> str:
     """
@@ -59,13 +59,13 @@ async def main():
 
         # page = context.pages[0]
 
-        browser = await p.chromium.launch(headless=False)
-        context = await browser.new_context()
-
-
         username = input('type in your instagram username.')
 
         mode = input('live scrape mode? y/n')
+
+        browser = await p.chromium.launch(headless=False)
+        context = await browser.new_context()
+
 
         # find the file with username prefixed file ending with suffix cookies in cookies folder of cwd
         cookie_file = find_user_cookies(username)
@@ -152,30 +152,15 @@ async def main():
 
         following = await following_scraper.run()
 
-        # set of usernames in followers and following list
-        followers_username = {item["username"] for item in followers}
-        following_username = {item["username"] for item in following}
 
-        they_dont_follow_back = [user for user in following if user["username"] not in followers_username]
-        you_dont_follow_back = [user for user in followers if user["username"] not in following_username]
+        follower_calculator = FollowerAnalyzer(followers, following, './')
 
-        print(f"they don't follow you back " , len(they_dont_follow_back))
-        print(f"you do not follow them back " , len(you_dont_follow_back))
 
-        try:
-            with open('./they_dont_follow_back.json', "w", encoding="utf-8") as f:
-                json.dump(they_dont_follow_back, f, indent=4, ensure_ascii=False)
-                print(f"Wrote {len(they_dont_follow_back)} records to you_dont_follow_back.json")
-        except Exception as e:
-            print(f" write failed: {e}")
+        they_dont_follow_back = follower_calculator.compute_they_dont_follow_back()
+        you_dont_follow_back = follower_calculator.compute_you_dont_follow_back()
 
-        try:
-            with open('./you_dont_follow_back.json', "w", encoding="utf-8") as f:
-                json.dump(you_dont_follow_back, f, indent=4, ensure_ascii=False)
-                print(f"Wrote {len(you_dont_follow_back)} records to you_dont_follow_back.json")
-        except Exception as e:
-            print(f" write failed: {e}")
-
+        follower_calculator._save_json('they_dont_follow_back.json' , they_dont_follow_back)
+        follower_calculator._save_json('you_dont_follow_back.json' ,you_dont_follow_back)
     
         print('written folllowing.json to disc')
 

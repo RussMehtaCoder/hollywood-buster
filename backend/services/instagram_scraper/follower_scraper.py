@@ -20,6 +20,9 @@ class InstagramFollowerScraper:
         self.scroller = WheelEventScroller(logger=self.log)
         self.loading = LoadingDetector(self.selectors, self.config.cooldown_s, logger=self.log)
         self.dom_observer = DomActivityObserver(self.config.quiet_ms, logger=self.log)
+        self.follower_list = []
+
+    
 
     async def run(self) -> List[Dict]:
         self.log.info("Starting follower scrape")
@@ -62,6 +65,8 @@ class InstagramFollowerScraper:
             except Exception as e:
                 self.log.error(f"Write failed: {e}")
                 print(f" write failed: {e}")
+        
+        self.follower_list = data
         return data
 
     async def _focus_anchor_if_present(self):
